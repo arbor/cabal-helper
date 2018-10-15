@@ -130,8 +130,7 @@ main = handlePanic $ do
     "print-appdatadir":[] -> putStrLn =<< appCacheDir
     "print-appcachedir":[] -> putStrLn =<< appCacheDir
     "print-build-platform":[] -> putStrLn $ display buildPlatform
-    "print-dist-dir":[] -> do
-      let projdir = "."
+    projdir:_distdir:"dist-dir":[] -> do
       let bp = display buildPlatform
       ghcVersion <- reverse . takeWhile (/= ' ') . reverse . takeWhile (/= '\n') <$> readProcess "ghc" ["--version"] ""
       [cfile] <- filter isCabalFile <$> getDirectoryContents projdir

@@ -64,9 +64,6 @@ module Distribution.Helper (
   , entrypoints
   , needsBuildOutput
 
-  -- ** Other queries
-  , distDir
-
   -- * Query environment
   , QueryEnv
   , mkQueryEnv
@@ -326,10 +323,7 @@ ghcPkgOptions :: MonadIO m => ComponentQuery m [String]
 -- | Only language related options, i.e. @-XSomeExtension@
 ghcLangOptions :: MonadIO m => ComponentQuery m [String]
 
-distDir :: MonadIO m => Query m String
-
-distDir               = Query   getDistDir
-packageId             = Query   getPackageId
+packageId             = Query $ getPackageId
 packageDbStack        = Query $ slbiPackageDbStack        `liftM` getSlbi
 packageFlags          = Query $ slbiPackageFlags          `liftM` getSlbi
 compilerVersion       = Query $ slbiCompilerVersion       `liftM` getSlbi
@@ -394,11 +388,6 @@ getPackageId :: MonadQuery m => m (String, Version)
 getPackageId = ask >>= \QueryEnv {..} -> do
   [ Just (ChResponseVersion pkgName pkgVer) ] <- readHelper [ "package-id" ]
   return (pkgName, pkgVer)
-
-getDistDir :: MonadQuery m => m String
-getDistDir = ask >>= \QueryEnv {..} -> do
-  [ Just (ChResponseDistDir dd) ] <- readHelper [ "dist-dir" ]
-  return dd
 
 getSomeConfigState :: MonadQuery m => m SomeLocalBuildInfo
 getSomeConfigState = ask >>= \QueryEnv {..} -> do
@@ -519,12 +508,14 @@ tryFindCabalHelperTreeDistDir = do
   exe <- canonicalizePath =<< getExecutablePath'
   mplan <- findPlanJson exe
   cwd <- getCurrentDirectory
+  bp <- buildPlatform readProc
 
   let candidates = sortBy (compare `on` ddType) $ concat
         [ maybeToList $ DistDir NewBuildDist <$> mplan
         , [ DistDir OldBuildDist $ (!!3) $ iterate takeDirectory exe ]
         , if takeFileName exe == "ghc" -- we're probably in ghci; try CWD
-            then [ DistDir NewBuildDist $ cwd </> "dist-newstyle"
+            then [ DistDir NewBuildDist $ cwd </> "dist-newstyle/build" </> bp </> "ghc-8.2.2/arbor-monad-counter-2.0.0"
+                 , DistDir NewBuildDist $ cwd </> "dist-newstyle"
                  , DistDir NewBuildDist $ cwd </> "dist"
                  , DistDir OldBuildDist $ cwd </> "dist"
                  ]
