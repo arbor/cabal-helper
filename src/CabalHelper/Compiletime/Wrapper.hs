@@ -13,7 +13,8 @@
 --
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{-# LANGUAGE RecordWildCards, FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RecordWildCards  #-}
 module Main where
 
 import Control.Applicative
@@ -21,29 +22,31 @@ import Control.Monad
 import Data.Char
 import Data.List
 import Data.Maybe
+import Data.Semigroup        ((<>))
 import Data.String
-import Text.Printf
-import System.Console.GetOpt
-import System.Environment
-import System.Directory
-import System.FilePath
-import System.Process
-import System.Exit
-import System.IO
 import Prelude
+import System.Console.GetOpt
+import System.Directory
+import System.Environment
+import System.Exit
+import System.FilePath
+import System.IO
+import System.Process
+import Text.Printf
 
-import Distribution.System (buildPlatform)
-import Distribution.Text (display)
-import Distribution.Verbosity (silent, deafening)
-import Distribution.Package (packageName, packageVersion)
+import Distribution.Package   (packageName, packageVersion)
+import Distribution.System    (buildPlatform)
+import Distribution.Text      (display)
+import Distribution.Verbosity (deafening, silent)
 
-import Paths_cabal_helper (version)
 import CabalHelper.Compiletime.Compat.Version
 import CabalHelper.Compiletime.Compile
 import CabalHelper.Compiletime.GuessGhc
 import CabalHelper.Compiletime.Types
 import CabalHelper.Shared.Common
 import CabalHelper.Shared.InterfaceTypes
+import Distribution.Simple.LocalBuildInfo     ()
+import Paths_cabal_helper                     (version)
 
 usage :: IO ()
 usage = do
@@ -127,6 +130,16 @@ main = handlePanic $ do
     "print-appdatadir":[] -> putStrLn =<< appCacheDir
     "print-appcachedir":[] -> putStrLn =<< appCacheDir
     "print-build-platform":[] -> putStrLn $ display buildPlatform
+    "print-dist-dir":[] -> do
+      let projdir = "."
+      let bp = display buildPlatform
+      ghcVersion <- reverse . takeWhile (/= ' ') . reverse . takeWhile (/= '\n') <$> readProcess "ghc" ["--version"] ""
+      [cfile] <- filter isCabalFile <$> getDirectoryContents projdir
+      gpd <- readPackageDescription silent (projdir </> cfile)
+      let pkgName     = display (packageName gpd) :: String
+      let pkgVersion  = display (toDataVersion (packageVersion gpd)) :: String
+
+      putStrLn $ "dist-newstyle/build" </> bp </> ("ghc-" <> ghcVersion) </> "arbor-monad-counter-2.0.0"
 
     projdir:_distdir:"package-id":[] -> do
       let v | oVerbose opts = deafening
