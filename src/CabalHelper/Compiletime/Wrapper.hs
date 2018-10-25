@@ -138,7 +138,7 @@ main = handlePanic $ do
       let pkgName     = display (packageName gpd) :: String
       let pkgVersion  = display (toDataVersion (packageVersion gpd)) :: String
 
-      putStrLn $ "dist-newstyle/build" </> bp </> ("ghc-" <> ghcVersion) </> "arbor-monad-counter-2.0.0"
+      putStr $ show $ "dist-newstyle/build" </> bp </> ("ghc-" <> ghcVersion) </> "arbor-monad-counter-2.0.0"
 
     projdir:_distdir:"package-id":[] -> do
       let v | oVerbose opts = deafening
