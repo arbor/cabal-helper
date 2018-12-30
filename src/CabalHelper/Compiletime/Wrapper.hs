@@ -209,23 +209,29 @@ main = handlePanic $ do
 \UnitId '"++ unitid' ++"' not found in plan.json, available local units:\n" ++ units_list
 
     "v1-style":projdir:distdir:args' -> do
-      cfgf <- canonicalizePath (distdir </> "setup-config")
-      mhdr <- getCabalConfigHeader cfgf
-      case (mhdr, oCabalVersion opts) of
-        (Nothing, _) -> panic $ printf "\
-\Could not read Cabal's persistent setup configuration header\n\
-\- Check first line of: %s\n\
-\- Maybe try: $ cabal configure" cfgf
-        (Just (hdrCabalVersion, _), Just ver)
-          | hdrCabalVersion /= ver -> panic $ printf "\
-\Cabal version %s was requested but setup configuration was\n\
-\written by version %s" (showVersion ver) (showVersion hdrCabalVersion)
-        (Just (hdrCabalVersion, _), _) ->
-          runHelper opts projdir Nothing distdir hdrCabalVersion args'
+      oldCfgf <- canonicalizePath (distdir </> "setup-config")
+      newCfgf <- canonicalizePath (distdir </> "opt" </> "setup-config")
+      hdrCabalVersion <- findConfig oldCfgf opts <|> findConfig newCfgf opts
+      runHelper opts projdir Nothing distdir hdrCabalVersion args'
     _ -> do
       hPutStrLn stderr "Invalid command line!"
       usage
       exitWith $ ExitFailure 1
+
+findConfig :: FilePath -> Options -> IO DataVersion
+findConfig cfgf opts = do
+  mhdr <- getCabalConfigHeader cfgf
+  case (mhdr, oCabalVersion opts) of
+    (Nothing, _) -> panic $ printf "\
+\Could not read Cabal's persistent setup configuration header\n\
+\- Check first line of: %s\n\
+\- Maybe try: $ cabal configure" cfgf
+    (Just (hdrCabalVersion, _), Just ver)
+      | hdrCabalVersion /= ver -> panic $ printf "\
+\Cabal version %s was requested but setup configuration was\n\
+\written by version %s" (showVersion ver) (showVersion hdrCabalVersion)
+    (Just (hdrCabalVersion, _), _) ->
+      return hdrCabalVersion
 
 runHelper :: Options -> FilePath -> Maybe (PlanJson, FilePath) -> FilePath -> DataVersion -> [String] -> IO ()
 runHelper opts projdir mnewstyle distdir cabal_ver args' = do
